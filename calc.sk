@@ -1,0 +1,228 @@
+variables:
+    {calc.PI} = 3.141592653589793
+    {calc.E} = 2.718281828459045
+
+command /calc <text>:
+    aliases: =
+    trigger:
+        send eval(arg 1)
+
+on chat:
+    if message starts with "=":
+        cancel event
+        set {_formula} to subtext of message from character 2 to length of message
+        set {_result} to eval({_formula})
+        send "%{_formula}%=%{_result}%" to player
+        send "%player's name% calculated %{_formula}%" to console
+
+# 文字列の初めに pattern に一致する文字が何文字続いているかを調べる。
+# 例:
+#     pattern_length("123.45+67.8", "[0-9\.]") = 6
+#     pattern_length("atan2(0, 1)", "[a-z0-9]") = 5
+#     pattern_length("-1", "[0-9\.]") = 0
+function pattern_length(src: text, pattern: text) :: integer:
+    set {_result} to 0
+    loop split {_src} at "":
+        if loop-value does not match {_pattern}:
+            return {_result}
+        add 1 to {_result}
+    return length of {_src}
+
+function cons(src: text, idx: integer) :: texts:
+    set {_result::*} to first {_idx} characters of {_src}
+    set {_slice} to subtext of {_src} from character {_idx} + 1 to length of {_src}
+    add tokenize({_slice}) to {_result::*}
+    return {_result::*}
+
+# 計算式の文字列をトークンに分割する。
+# 例:
+#     tokeinze("1.2+3-45*6") = "1.2", "+", "3", "-", "45", "*" and "6"
+function tokenize(src: text) :: texts:
+    if {_src} is not set:
+        return {_none}
+    if {_src} is empty:
+        return {_none}
+    if {_src} starts with " ":
+        return tokenize(subtext of {_src} from character 2 to length of {_src})
+    set {_number_length} to pattern_length({_src}, "[0-9\.]")
+    if {_number_length} is not 0:
+        return cons({_src}, {_number_length})
+    set {_alphanumeric_length} to pattern_length({_src}, "[0-9a-zπ]")
+    if {_alphanumeric_length} is not 0:
+        return cons({_src}, {_alphanumeric_length})
+    if first character of {_src} matches "[\+\-\*×/÷^(),]":
+        return cons({_src}, 1)
+    return "[error]"
+
+options:
+    CALC_POS: {calc.pos::%{_uuid}%}
+
+# 計算式の値を求める。
+function eval(expr: text) :: object:
+    set {_tokens::*} to tokenize({_expr} in lowercase)
+    if {_tokens::*} contains "[error]":
+        return "[error]"
+    set {_uuid} to a random uuid
+    set {@CALC_POS} to 0
+    set {_result} to eval_formula({_tokens::*}, {_uuid})
+    if {@CALC_POS} is size of {_tokens::*}:
+        return {_result}
+    else:
+        return "[error]"
+
+# ABNF:
+# formula = ["+" / "-"] term *(("+" / "-") term)
+function eval_formula(tokens: texts, uuid: text) :: object:
+    add 1 to {@CALC_POS}
+    set {_op} to {_tokens::%{@CALC_POS}%}
+    if {_op} is not "+" or "-":  #  term *(("+" / "-") term)
+        subtract 1 from {@CALC_POS}
+    set {_result} to eval_term({_tokens::*}, {_uuid})
+    if {_op} is "-":  # "-" term *(("+" / "-") term)
+        set {_result} to -1 * {_result}
+
+    add 1 to {@CALC_POS}
+    set {_op} to {_tokens::%{@CALC_POS}%}
+    while {_op} is "+" or "-":  # ["+" / "-"] term ("+" / "-") term *(("+" / "-") term)
+        if {@CALC_POS} is size of {_tokens::*}:
+            subtract 1 from {@CALC_POS}
+            exit loop
+        set {_right} to eval_term({_tokens::*}, {_uuid})
+        if {_op} is "+":  # ["+" / "-"] term "+" term *(("+" / "-") term)
+            set {_result} to {_result} + {_right}
+        else:  # ["+" / "-"] term "-" term *(("+" / "-") term)
+            set {_result} to {_result} - {_right}
+        add 1 to {@CALC_POS}
+        set {_op} to {_tokens::%{@CALC_POS}%}
+    subtract 1 from {@CALC_POS}
+
+    return {_result}
+
+# term = factor *(("*" / "×" / "/" / "÷") factor)
+function eval_term(tokens: texts, uuid: text) :: object:
+    set {_result} to eval_factor({_tokens::*}, {_uuid})
+
+    add 1 to {@CALC_POS}
+    set {_op} to {_tokens::%{@CALC_POS}%}
+    while {_op} is "*", "×", "÷" or "/":  # factor ("*" / "×" / "/" / "÷") factor *(("*" / "×" / "/" / "÷") factor)
+        if {@CALC_POS} is size of {_tokens::*}:
+            subtract 1 from {@CALC_POS}
+            exit loop
+        set {_right} to eval_factor({_tokens::*}, {_uuid})
+        if {_op} is "*" or "×":  # factor "*" factor *(("*" / "×") factor)
+            set {_result} to {_result} * {_right}
+        else:  # factor "/" factor *(("/" / "÷") factor)
+            set {_result} to {_result} / {_right}
+        add 1 to {@CALC_POS}
+        set {_op} to {_tokens::%{@CALC_POS}%}
+    subtract 1 from {@CALC_POS}
+
+    return {_result}
+
+# factor = base ["^" factor]
+function eval_factor(tokens: texts, uuid: text) :: object:
+    set {_left} to eval_base({_tokens::*}, {_uuid})
+    add 1 to {@CALC_POS}
+    if {_tokens::%{@CALC_POS}%} is "^":  # base "^" factor
+        if {@CALC_POS} is size of {_tokens::*}:
+            subtract 1 from {@CALC_POS}
+        else:
+            set {_right} to eval_factor({_tokens::*}, {_uuid})
+            set {_result} to {_left} ^ {_right}
+    else:  # base
+        subtract 1 from {@CALC_POS}
+        set {_result} to {_left}
+    return {_result}
+
+# base = unit ["(" formula *("," formula) ")"]
+function eval_base(tokens: texts, uuid: text) :: object:
+    set {_result} to eval_unit({_tokens::*}, {_uuid})
+    add 1 to {@CALC_POS}
+    if {_tokens::%{@CALC_POS}%} is "(":  # unit "(" formula *("," formula) ")"
+        if {@CALC_POS} is size of {_tokens::*}:
+            subtract 1 from {@CALC_POS}
+        else:
+            set {_right::*} to eval_formula({_tokens::*}, {_uuid})
+            add 1 to {@CALC_POS}
+            while {_tokens::%{@CALC_POS}%} is ",":
+                if {@CALC_POS} is size of {_tokens::*}:
+                    subtract 1 from {@CALC_POS}
+                    exit loop
+                add eval_formula({_tokens::*}, {_uuid}) to {_right::*}
+                add 1 to {@CALC_POS}
+            if {_tokens::%{@CALC_POS}%} is ")":
+                set {_result} to apply_func({_result}, {_right::*})
+            else:
+                subtract 1 from {@CALC_POS}
+    else:  # unit
+        subtract 1 from {@CALC_POS}
+    return {_result}
+
+# unit = "(" formula ")" / number / identifier
+function eval_unit(tokens: texts, uuid: text) :: object:
+    add 1 to {@CALC_POS}
+    set {_left} to {_tokens::%{@CALC_POS}%}
+    if {_left} is "(":  # "(" formula ")"
+        set {_value} to eval_formula({_tokens::*}, {_uuid})
+        add 1 to {@CALC_POS}
+        if {_tokens::%{@CALC_POS}%} is ")":
+            set {_result} to {_value}
+        else:
+            subtract 1 from {@CALC_POS}
+            set {_result} to NaN value
+    else if {_left} matches "[0-9\.]+":  # number
+        set {_result} to {_left} parsed as number
+    else if {_left} matches "[0-9a-zπ]+":  # identifier
+        if {_left} is "pi" or "π":
+            set {_result} to {calc.PI}
+        else if {_left} is "e":
+            set {_result} to {calc.E}
+        else:
+            set {_result} to {_left}
+    else:
+        subtract 1 from {calc.pos::%{_uuid}%}
+        set {_result} to NaN value
+    return {_result}
+
+function apply_func(func: text, params: objects) :: object:
+    if {_func} is "abs":
+        return abs({_params::1})
+    if {_func} is "acos":
+        return acos({_params::1})
+    if {_func} is "asin":
+        return asin({_params::1})
+    if {_func} is "atan":
+        return atan({_params::1})
+    if {_func} is "atan2":
+        return atan2({_params::1}, {_params::2})
+    if {_func} is "ceil" or "ceiling":
+        return ceil({_params::1})
+    if {_func} is "cos":
+        return cos({_params::1})
+    if {_func} is "exp":
+        return exp({_params::1})
+    if {_func} is "floor":
+        return floor({_params::1})
+    if {_func} is "ln":
+        return ln({_params::1})
+    if {_func} is "log":
+        return log({_params::1}, {_params::2})
+    if {_func} is "max":
+        return max({_params::*})
+    if {_func} is "min":
+        return min({_params::*})
+    if {_func} is "mod":
+        return mod({_params::1}, {_params::2})
+    if {_func} is "product":
+        return product({_params::*})
+    if {_func} is "round":
+        return round({_params::1})
+    if {_func} is "sin":
+        return sin({_params::1})
+    if {_func} is "sqrt":
+        return sqrt({_params::1})
+    if {_func} is "sum":
+        return sum({_params::1})
+    if {_func} is "tan":
+        return tan({_params::1})
+    return NaN value
