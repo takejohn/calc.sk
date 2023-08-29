@@ -206,7 +206,10 @@ function apply_func(func: text, params: objects) :: object:
     if {_func} is "ln":
         return ln({_params::1})
     if {_func} is "log":
-        return log({_params::1}, {_params::2})
+        if {_params::2} is set:
+            return log({_params::1}, {_params::2})
+        else:
+            return log({_params::1})
     if {_func} is "max":
         return max({_params::*})
     if {_func} is "min":
