@@ -225,7 +225,7 @@ function apply_func(func: text, params: objects) :: object:
     if {_func} is "sqrt":
         return sqrt({_params::1})
     if {_func} is "sum":
-        return sum({_params::1})
+        return sum({_params::*})
     if {_func} is "tan":
         return tan({_params::1})
     return NaN value
