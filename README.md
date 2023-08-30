@@ -65,3 +65,8 @@
 | `sqrt(x)` | 正の平方根 |
 | `sum(x_0,...,x_n)` | 和 |
 | `tan(x)` | 正接 |
+
+## License
+
+この Skript ファイルは Apache-2.0 ライセンスの元で使用できます。
+詳しくは [`LICENSE` ファイル](/LICENSE) を参照してください。

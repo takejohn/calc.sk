@@ -1,3 +1,6 @@
+# Copyright 2023 Author(s): https://github.com/takejohn/calc.sk/graphs/contributors
+# SPDX-License-Identifier: Apache-2.0
+
 variables:
     {calc.PI} = 3.141592653589793
     {calc.E} = 2.718281828459045
