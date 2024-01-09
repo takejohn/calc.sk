@@ -23,7 +23,7 @@ on chat:
 #     pattern_length("123.45+67.8", "[0-9\.]") = 6
 #     pattern_length("atan2(0, 1)", "[a-z0-9]") = 5
 #     pattern_length("-1", "[0-9\.]") = 0
-function pattern_length(src: text, pattern: text) :: integer:
+local function pattern_length(src: text, pattern: text) :: integer:
     set {_result} to 0
     loop split {_src} at "":
         if loop-value does not match {_pattern}:
@@ -31,7 +31,7 @@ function pattern_length(src: text, pattern: text) :: integer:
         add 1 to {_result}
     return length of {_src}
 
-function cons(src: text, idx: integer) :: texts:
+local function cons(src: text, idx: integer) :: texts:
     set {_result::*} to first {_idx} characters of {_src}
     set {_slice} to subtext of {_src} from character {_idx} + 1 to length of {_src}
     add tokenize({_slice}) to {_result::*}
@@ -40,7 +40,7 @@ function cons(src: text, idx: integer) :: texts:
 # 計算式の文字列をトークンに分割する。
 # 例:
 #     tokeinze("1.2+3-45*6") = "1.2", "+", "3", "-", "45", "*" and "6"
-function tokenize(src: text) :: texts:
+local function tokenize(src: text) :: texts:
     if {_src} is not set:
         return {_none}
     if {_src} is empty:
@@ -61,7 +61,7 @@ options:
     CALC_POS: {calc.pos::%{_uuid}%}
 
 # 計算式の値を求める。
-function eval(expr: text) :: object:
+local function eval(expr: text) :: object:
     set {_tokens::*} to tokenize({_expr} in lowercase)
     if {_tokens::*} contains "[error]":
         return "[error]"
@@ -75,7 +75,7 @@ function eval(expr: text) :: object:
 
 # ABNF:
 # formula = ["+" / "-"] term *(("+" / "-") term)
-function eval_formula(tokens: texts, uuid: text) :: object:
+local function eval_formula(tokens: texts, uuid: text) :: object:
     add 1 to {@CALC_POS}
     set {_op} to {_tokens::%{@CALC_POS}%}
     if {_op} is not "+" or "-":  #  term *(("+" / "-") term)
@@ -102,7 +102,7 @@ function eval_formula(tokens: texts, uuid: text) :: object:
     return {_result}
 
 # term = factor *(("*" / "×" / "/" / "÷") factor)
-function eval_term(tokens: texts, uuid: text) :: object:
+local function eval_term(tokens: texts, uuid: text) :: object:
     set {_result} to eval_factor({_tokens::*}, {_uuid})
 
     add 1 to {@CALC_POS}
@@ -123,7 +123,7 @@ function eval_term(tokens: texts, uuid: text) :: object:
     return {_result}
 
 # factor = base ["^" factor]
-function eval_factor(tokens: texts, uuid: text) :: object:
+local function eval_factor(tokens: texts, uuid: text) :: object:
     set {_left} to eval_base({_tokens::*}, {_uuid})
     add 1 to {@CALC_POS}
     if {_tokens::%{@CALC_POS}%} is "^":  # base "^" factor
@@ -138,7 +138,7 @@ function eval_factor(tokens: texts, uuid: text) :: object:
     return {_result}
 
 # base = unit ["(" formula *("," formula) ")"]
-function eval_base(tokens: texts, uuid: text) :: object:
+local function eval_base(tokens: texts, uuid: text) :: object:
     set {_result} to eval_unit({_tokens::*}, {_uuid})
     add 1 to {@CALC_POS}
     if {_tokens::%{@CALC_POS}%} is "(":  # unit "(" formula *("," formula) ")"
@@ -162,7 +162,7 @@ function eval_base(tokens: texts, uuid: text) :: object:
     return {_result}
 
 # unit = "(" formula ")" / number / identifier
-function eval_unit(tokens: texts, uuid: text) :: object:
+local function eval_unit(tokens: texts, uuid: text) :: object:
     add 1 to {@CALC_POS}
     set {_left} to {_tokens::%{@CALC_POS}%}
     if {_left} is "(":  # "(" formula ")"
@@ -187,7 +187,7 @@ function eval_unit(tokens: texts, uuid: text) :: object:
         set {_result} to NaN value
     return {_result}
 
-function apply_func(func: text, params: objects) :: object:
+local function apply_func(func: text, params: objects) :: object:
     if {_func} is "abs":
         return abs({_params::1})
     if {_func} is "acos":
