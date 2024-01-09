@@ -31,6 +31,10 @@ local function pattern_length(src: text, pattern: text) :: integer:
         add 1 to {_result}
     return length of {_src}
 
+local function is_valid_real(src: text, len: integer) :: boolean:
+    set {_s} to first {_len} characters of {_src}
+    return true if {_s} matches "[0-9]+(?:[0-9\.][0-9]+)?" else false
+
 local function cons(src: text, idx: integer) :: texts:
     set {_result::*} to first {_idx} characters of {_src}
     set {_slice} to subtext of {_src} from character {_idx} + 1 to length of {_src}
@@ -49,7 +53,8 @@ local function tokenize(src: text) :: texts:
         return tokenize(subtext of {_src} from character 2 to length of {_src})
     set {_number_length} to pattern_length({_src}, "[0-9\.]")
     if {_number_length} is not 0:
-        return cons({_src}, {_number_length})
+        if is_valid_real({_src}, {_number_length}) is true:
+            return cons({_src}, {_number_length})
     set {_alphanumeric_length} to pattern_length({_src}, "[0-9a-zπ]")
     if {_alphanumeric_length} is not 0:
         return cons({_src}, {_alphanumeric_length})
