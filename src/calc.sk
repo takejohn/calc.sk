@@ -1,9 +1,9 @@
 # Copyright 2023-2024 Author(s): https://github.com/takejohn/calc.sk/graphs/contributors
 # SPDX-License-Identifier: Apache-2.0
 
-variables:
-    {calc.PI} = 3.141592653589793
-    {calc.E} = 2.718281828459045
+options:
+    calc.PI: 3.141592653589793
+    calc.E: 2.718281828459045
 
 command /calc <text>:
     aliases: =
@@ -182,9 +182,9 @@ local function eval_unit(tokens: texts, uuid: text) :: object:
         set {_result} to {_left} parsed as number
     else if {_left} matches "[0-9a-zπ]+":  # identifier
         if {_left} is "pi" or "π":
-            set {_result} to {calc.PI}
+            set {_result} to {@calc.PI}
         else if {_left} is "e":
-            set {_result} to {calc.E}
+            set {_result} to {@calc.E}
         else:
             set {_result} to {_left}
     else:
